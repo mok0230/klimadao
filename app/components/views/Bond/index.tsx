@@ -6,6 +6,8 @@ import DownOutlined from "@mui/icons-material/KeyboardArrowDownRounded";
 import UpOutlined from "@mui/icons-material/KeyboardArrowUpRounded";
 import LeftOutlined from "@mui/icons-material/KeyboardArrowLeftRounded";
 import { Link } from "react-router-dom";
+import { setAppState, AppNotificationStatus } from "state/app";
+import { selectNotificationStatus } from "state/selectors";
 
 import {
   changeApprovalTransaction,
@@ -72,7 +74,16 @@ interface Props {
 export const Bond: FC<Props> = (props) => {
   const bondInfo = useBond(props.bond);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [status, setStatus] = useState(""); // "userConfirmation", "networkConfirmation", "done", "userRejected, "error"
+
+  const fullStatus: AppNotificationStatus | null = useSelector(
+    selectNotificationStatus
+  );
+  const status = fullStatus && fullStatus.statusType;
+
+  const setStatus = (statusType: string, message: string) => {
+    if (!statusType) dispatch(setAppState({ notificationStatus: null }));
+    else dispatch(setAppState({ notificationStatus: { statusType, message } }));
+  };
 
   const dispatch = useAppDispatch();
   const [slippage, setSlippage] = useState(2);
@@ -131,7 +142,7 @@ export const Bond: FC<Props> = (props) => {
   };
 
   const setMax = () => {
-    setStatus("");
+    setStatus("", "");
     if (view === "bond") {
       const bondMax = getBondMax();
       setQuantity(bondMax ?? "0");
@@ -167,7 +178,7 @@ export const Bond: FC<Props> = (props) => {
 
   const handleAllowance = async () => {
     try {
-      setStatus("");
+      setStatus("", "");
       const value = await changeApprovalTransaction({
         provider: props.provider,
         bond: props.bond,
@@ -296,37 +307,6 @@ export const Bond: FC<Props> = (props) => {
         disabled: true,
       };
     }
-  };
-
-  const getStatusMessage = () => {
-    if (status === "userConfirmation") {
-      return (
-        <Trans id="status.pending_confirmation">
-          Please click 'confirm' in your wallet to continue.
-        </Trans>
-      );
-    } else if (status === "networkConfirmation") {
-      return (
-        <Trans id="status.transaction_started">
-          Transaction initiated. Waiting for network confirmation.
-        </Trans>
-      );
-    } else if (status === "error") {
-      return (
-        <Trans id="status.transaction_error">
-          ❌ Error: something went wrong...
-        </Trans>
-      );
-    } else if (status === "done") {
-      return <Trans id="status.transaction_success">✔️ Success!.</Trans>;
-    } else if (status === "userRejected") {
-      return (
-        <Trans id="status.transaction_rejected">
-          ✖️ You chose to reject the transaction.
-        </Trans>
-      );
-    }
-    return null;
   };
 
   const isBondDiscountNegative =
@@ -751,9 +731,6 @@ export const Bond: FC<Props> = (props) => {
           {...getButtonProps()}
         />
       </div>
-      {getStatusMessage() && (
-        <p className={styles.statusMessage}>{getStatusMessage()}</p>
-      )}
     </div>
   );
 };
